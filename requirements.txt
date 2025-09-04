@@ -4,8 +4,8 @@
 # Environment variables
 python-dotenv==1.0.0
 
-# Database
-sqlalchemy==2.0.23
+# Database - UPDATED for Python 3.13 compatibility
+sqlalchemy==2.0.36
 
 # API Framework
 fastapi==0.104.1
