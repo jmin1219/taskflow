@@ -4,8 +4,10 @@ services:
     name: taskflow
     env: python
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "uvicorn my_taskflow.backend.api:app --host 0.0.0.0 --port $PORT"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"
+      - key: PYTHONPATH
+        value: "/opt/render/project/src"
     autoDeploy: true
