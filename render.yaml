@@ -1,12 +1,11 @@
-# render.yaml - Render deployment configuration for monorepo
+# render.yaml - Render deployment configuration
 services:
   - type: web
-    name: taskflow-api
+    name: taskflow
     env: python
-    rootDir: project_taskflow  # Tell Render where TaskFlow lives
-    buildCommand: "cd project_taskflow && pip install -r requirements.txt"
-    startCommand: "cd project_taskflow && uvicorn my_taskflow.backend.api:app --host 0.0.0.0 --port $PORT"
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn my_taskflow.backend.api:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"
-    autoDeploy: false
+    autoDeploy: true

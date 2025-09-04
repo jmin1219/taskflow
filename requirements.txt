@@ -1,0 +1,24 @@
+# TaskFlow Requirements
+# Core dependencies for CLI and API
+
+# Environment variables
+python-dotenv==1.0.0
+
+# Database
+sqlalchemy==2.0.23
+
+# API Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+pydantic>=2.0.0
+
+# CLI
+click==8.1.7
+rich==13.7.0
+
+# Date handling
+python-dateutil==2.8.2
+
+# Development (optional, but good for Render)
+pytest==7.4.3
