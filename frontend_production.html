@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow - Task Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom animations */
+        @keyframes slideIn {
+            from { transform: translateY(-10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        /* Dark mode styles */
+        .dark {
+            background-color: #1a1a1a;
+        }
+        .dark .bg-white {
+            background-color: #2d2d2d;
+        }
+        .dark .bg-gray-50 {
+            background-color: #3d3d3d;
+        }
+        .dark .text-gray-600 {
+            color: #a0a0a0;
+        }
+        .dark .text-gray-800 {
+            color: #e0e0e0;
+        }
+        
+        /* Hover effects */
+        .task-card {
+            transition: all 0.2s ease;
+        }
+        .task-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="transition-colors duration-300">
+    <!-- Header with Dark Mode Toggle -->
+    <header class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 shadow-lg">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold">🚀 TaskFlow</h1>
+                <p class="text-sm opacity-90 mt-1">Your Personal Task Management System</p>
+            </div>
+            <div class="flex gap-3">
+                <button id="dark-toggle" class="px-4 py-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition">
+                    🌙 Dark Mode
+                </button>
+                <button id="refresh-btn" class="px-4 py-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition">
+                    🔄 Refresh
+                </button>
+                <a href="/docs" class="px-4 py-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition">
+                    📚 API Docs
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Stats Dashboard -->
+    <div class="max-w-6xl mx-auto px-4 py-6">
+        <div id="stats-dashboard" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <!-- Stats cards will be inserted here -->
+        </div>
+
+        <!-- Export Buttons -->
+        <div class="flex justify-center gap-4 mb-6">
+            <button id="export-csv" class="px-6 py-3 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition flex items-center gap-2">
+                📊 Export to CSV
+            </button>
+            <button id="export-json" class="px-6 py-3 bg-yellow-600 text-white rounded-lg shadow hover:bg-yellow-700 transition flex items-center gap-2">
+                📄 Export to JSON
+            </button>
+            <button id="add-task-btn" class="px-6 py-3 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition flex items-center gap-2">
+                ➕ Add New Task
+            </button>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Overdue Tasks -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-red-600">⚠️ Overdue</h2>
+                    <span id="overdue-count" class="bg-red-100 text-red-600 px-3 py-1 rounded-full text-sm font-semibold">0</span>
+                </div>
+                <ul id="overdue-tasks" class="space-y-3 max-h-96 overflow-y-auto"></ul>
+            </div>
+
+            <!-- Today's Tasks -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-blue-600">📅 Today</h2>
+                    <span id="today-count" class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm font-semibold">0</span>
+                </div>
+                <ul id="today-tasks" class="space-y-3 max-h-96 overflow-y-auto"></ul>
+            </div>
+
+            <!-- In Progress Tasks -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-yellow-600">⏳ In Progress</h2>
+                    <span id="progress-count" class="bg-yellow-100 text-yellow-600 px-3 py-1 rounded-full text-sm font-semibold">0</span>
+                </div>
+                <ul id="inprogress-tasks" class="space-y-3 max-h-96 overflow-y-auto"></ul>
+            </div>
+        </div>
+
+        <!-- Progress Chart -->
+        <div class="mt-8 bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-xl font-bold mb-4">📈 Task Progress</h2>
+            <canvas id="progressChart" width="400" height="100"></canvas>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div id="add-task-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md relative slide-in">
+            <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl">×</button>
+            <h2 class="text-2xl font-bold mb-6">✨ Create New Task</h2>
+            <form id="add-task-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Title *</label>
+                    <input type="text" name="title" required 
+                        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                        placeholder="Enter task title..." />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Description</label>
+                    <textarea name="description" rows="3" 
+                        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                        placeholder="Add details..."></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Priority</label>
+                        <select name="priority" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="1">🔴 Critical (1)</option>
+                            <option value="2">🟠 High (2)</option>
+                            <option value="3" selected>🟡 Normal (3)</option>
+                            <option value="4">🟢 Low (4)</option>
+                            <option value="5">⚪ Minimal (5)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Due Date</label>
+                        <input type="date" name="due_date" 
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                </div>
+                <button type="submit" class="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition font-semibold">
+                    Create Task
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // API Base URL - Use relative URLs when deployed, localhost for development
+        const API_URL = window.location.hostname === 'localhost' ? 'http://localhost:8000' : '';
+        
+        // State
+        let darkMode = localStorage.getItem('darkMode') === 'true';
+        let tasks = [];
+        let stats = {};
+
+        // Apply dark mode on load
+        if (darkMode) {
+            document.body.classList.add('dark');
+            document.getElementById('dark-toggle').textContent = '☀️ Light Mode';
+        }
+
+        // Dark mode toggle
+        document.getElementById('dark-toggle').addEventListener('click', () => {
+            darkMode = !darkMode;
+            localStorage.setItem('darkMode', darkMode);
+            document.body.classList.toggle('dark');
+            document.getElementById('dark-toggle').textContent = darkMode ? '☀️ Light Mode' : '🌙 Dark Mode';
+        });
+
+        // Refresh button
+        document.getElementById('refresh-btn').addEventListener('click', () => {
+            fetchTasks();
+            fetchStats();
+        });
+
+        // Export functions
+        document.getElementById('export-csv').addEventListener('click', async () => {
+            window.location.href = `${API_URL}/export/csv`;
+        });
+
+        document.getElementById('export-json').addEventListener('click', async () => {
+            const response = await fetch(`${API_URL}/export/json`);
+            const data = await response.json();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `taskflow_export_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+        });
+
+        // Fetch and display stats
+        async function fetchStats() {
+            try {
+                const response = await fetch(`${API_URL}/stats/`);
+                stats = await response.json();
+                displayStats();
+                updateChart();
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+            }
+        }
+
+        function displayStats() {
+            const dashboard = document.getElementById('stats-dashboard');
+            dashboard.innerHTML = `
+                <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-6 shadow-lg">
+                    <div class="text-3xl font-bold">${stats.total_tasks || 0}</div>
+                    <div class="text-sm opacity-90 mt-2">Total Tasks</div>
+                </div>
+                <div class="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-6 shadow-lg">
+                    <div class="text-3xl font-bold">${stats.by_status?.done || 0}</div>
+                    <div class="text-sm opacity-90 mt-2">Completed</div>
+                </div>
+                <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-xl p-6 shadow-lg">
+                    <div class="text-3xl font-bold">${stats.by_status?.in_progress || 0}</div>
+                    <div class="text-sm opacity-90 mt-2">In Progress</div>
+                </div>
+                <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-6 shadow-lg">
+                    <div class="text-3xl font-bold">${stats.completion_rate || '0%'}</div>
+                    <div class="text-sm opacity-90 mt-2">Completion Rate</div>
+                </div>
+            `;
+        }
+
+        // Update progress chart
+        function updateChart() {
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Todo', 'In Progress', 'Done'],
+                    datasets: [{
+                        data: [
+                            stats.by_status?.todo || 0,
+                            stats.by_status?.in_progress || 0,
+                            stats.by_status?.done || 0
+                        ],
+                        backgroundColor: [
+                            'rgba(239, 68, 68, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(34, 197, 94, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(239, 68, 68, 1)',
+                            'rgba(245, 158, 11, 1)',
+                            'rgba(34, 197, 94, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        }
+                    }
+                }
+            });
+        }
+
+        // Fetch and display tasks
+        async function fetchTasks() {
+            try {
+                const response = await fetch(`${API_URL}/tasks/`);
+                tasks = await response.json();
+                
+                // Clear containers
+                document.getElementById('overdue-tasks').innerHTML = '';
+                document.getElementById('today-tasks').innerHTML = '';
+                document.getElementById('inprogress-tasks').innerHTML = '';
+                
+                // Reset counters
+                let overdueCount = 0, todayCount = 0, progressCount = 0;
+                
+                // Current date for comparison
+                const now = new Date();
+                const todayStr = now.toISOString().split('T')[0];
+                
+                // Sort tasks by priority
+                tasks.sort((a, b) => a.priority - b.priority);
+                
+                tasks.forEach(task => {
+                    const dueDate = task.due_date ? new Date(task.due_date) : null;
+                    const dueDateStr = dueDate ? dueDate.toISOString().split('T')[0] : null;
+                    
+                    const taskElement = createTaskElement(task);
+                    
+                    if (task.status !== 'done') {
+                        if (dueDateStr && dueDateStr < todayStr) {
+                            document.getElementById('overdue-tasks').appendChild(taskElement);
+                            overdueCount++;
+                        } else if (dueDateStr && dueDateStr === todayStr) {
+                            document.getElementById('today-tasks').appendChild(taskElement);
+                            todayCount++;
+                        } else if (task.status === 'in_progress') {
+                            document.getElementById('inprogress-tasks').appendChild(taskElement);
+                            progressCount++;
+                        }
+                    }
+                });
+                
+                // Update counters
+                document.getElementById('overdue-count').textContent = overdueCount;
+                document.getElementById('today-count').textContent = todayCount;
+                document.getElementById('progress-count').textContent = progressCount;
+                
+                // Show empty states
+                if (overdueCount === 0) {
+                    document.getElementById('overdue-tasks').innerHTML = '<li class="text-gray-400 text-center py-4">No overdue tasks! 🎉</li>';
+                }
+                if (todayCount === 0) {
+                    document.getElementById('today-tasks').innerHTML = '<li class="text-gray-400 text-center py-4">No tasks due today</li>';
+                }
+                if (progressCount === 0) {
+                    document.getElementById('inprogress-tasks').innerHTML = '<li class="text-gray-400 text-center py-4">No tasks in progress</li>';
+                }
+                
+            } catch (error) {
+                console.error('Error fetching tasks:', error);
+                document.getElementById('overdue-tasks').innerHTML = '<li class="text-red-500 text-center py-4">Error loading tasks. Please check if the API is running.</li>';
+            }
+        }
+
+        function createTaskElement(task) {
+            const li = document.createElement('li');
+            li.className = 'task-card bg-gray-50 rounded-lg px-4 py-3 cursor-pointer';
+            
+            const priorityColors = {
+                1: 'text-red-600 bg-red-100',
+                2: 'text-orange-600 bg-orange-100',
+                3: 'text-yellow-600 bg-yellow-100',
+                4: 'text-green-600 bg-green-100',
+                5: 'text-gray-600 bg-gray-100'
+            };
+            
+            const priorityStyle = priorityColors[task.priority] || priorityColors[3];
+            
+            li.innerHTML = `
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="font-semibold text-gray-800">${task.title}</div>
+                        ${task.description ? `<div class="text-sm text-gray-600 mt-1">${task.description}</div>` : ''}
+                        <div class="flex items-center gap-2 mt-2">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${priorityStyle}">
+                                P${task.priority}
+                            </span>
+                            ${task.due_date ? `<span class="text-xs text-gray-500">📅 ${new Date(task.due_date).toLocaleDateString()}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 ml-4">
+                        <select class="status-select text-xs px-2 py-1 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                data-id="${task.id}">
+                            <option value="todo" ${task.status === 'todo' ? 'selected' : ''}>Todo</option>
+                            <option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                            <option value="done" ${task.status === 'done' ? 'selected' : ''}>Done</option>
+                        </select>
+                        <button class="done-btn px-2 py-1 rounded bg-green-500 hover:bg-green-600 text-white text-xs transition" 
+                                data-id="${task.id}">
+                            ✓
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Add event listeners
+            li.querySelector('.status-select').addEventListener('change', async (e) => {
+                const newStatus = e.target.value;
+                await updateTaskStatus(task.id, newStatus);
+            });
+            
+            li.querySelector('.done-btn').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await markTaskDone(task.id);
+            });
+            
+            return li;
+        }
+
+        async function updateTaskStatus(id, status) {
+            try {
+                await fetch(`${API_URL}/tasks/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status })
+                });
+                fetchTasks();
+                fetchStats();
+            } catch (error) {
+                console.error('Error updating task:', error);
+            }
+        }
+
+        async function markTaskDone(id) {
+            try {
+                await fetch(`${API_URL}/tasks/${id}/done`, { method: 'POST' });
+                fetchTasks();
+                fetchStats();
+            } catch (error) {
+                console.error('Error marking task done:', error);
+            }
+        }
+
+        // Modal controls
+        const modal = document.getElementById('add-task-modal');
+        const addTaskBtn = document.getElementById('add-task-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const addTaskForm = document.getElementById('add-task-form');
+
+        addTaskBtn.addEventListener('click', () => {
+            modal.classList.remove('hidden');
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+
+        addTaskForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(addTaskForm);
+            
+            const taskData = {
+                title: formData.get('title'),
+                description: formData.get('description') || null,
+                priority: parseInt(formData.get('priority')),
+                due_date: formData.get('due_date') ? new Date(formData.get('due_date')).toISOString() : null
+            };
+            
+            try {
+                await fetch(`${API_URL}/tasks/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(taskData)
+                });
+                
+                modal.classList.add('hidden');
+                addTaskForm.reset();
+                fetchTasks();
+                fetchStats();
+            } catch (error) {
+                console.error('Error creating task:', error);
+            }
+        });
+
+        // Initialize
+        fetchTasks();
+        fetchStats();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            fetchTasks();
+            fetchStats();
+        }, 30000);
+    </script>
+</body>
+</html>

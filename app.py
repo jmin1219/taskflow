@@ -6,6 +6,8 @@ This file combines the necessary imports to avoid module path issues
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import datetime
@@ -13,6 +15,7 @@ from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 import sys
 import os
+from pathlib import Path
 
 # Import database from same directory (both at root now)
 from database import Task, SessionLocal, init_db, TaskStatus, Priority
@@ -77,9 +80,71 @@ class TaskResponse(TaskBase):
     created_at: datetime
     updated_at: Optional[datetime]
 
-# ===== Root Endpoint =====
-@app.get("/")
+# ===== Mount static files for frontend =====
+# Check if frontend directory exists
+frontend_path = Path(__file__).parent / "my_taskflow" / "frontend"
+root_frontend_path = Path(__file__).parent  # Also check root for frontend files
+
+# Try to find the frontend HTML
+if frontend_path.exists():
+    app.mount("/static", StaticFiles(directory=str(frontend_path)), name="static")
+
+# ===== Root Endpoint - Serve HTML =====
+@app.get("/", response_class=HTMLResponse)
 def read_root():
+    """
+    Serve the frontend HTML instead of JSON
+    """
+    # First try production HTML in root
+    html_file = root_frontend_path / "frontend_production.html"
+    
+    if not html_file.exists():
+        # Then try enhanced HTML in frontend folder
+        html_file = frontend_path / "index_enhanced.html" 
+    
+    if not html_file.exists():
+        # Fallback to basic index.html
+        html_file = frontend_path / "index.html"
+    
+    if html_file.exists():
+        with open(html_file, 'r') as f:
+            content = f.read()
+        return HTMLResponse(content=content)
+    else:
+        # Fallback to a simple HTML if no file found
+        return HTMLResponse(content="""
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>TaskFlow</title>
+                <style>
+                    body { font-family: system-ui; max-width: 800px; margin: 50px auto; padding: 20px; }
+                    h1 { color: #2563eb; }
+                    .links { margin-top: 30px; }
+                    .links a { display: inline-block; margin: 10px; padding: 10px 20px; 
+                              background: #3b82f6; color: white; text-decoration: none; 
+                              border-radius: 5px; }
+                    .links a:hover { background: #2563eb; }
+                </style>
+            </head>
+            <body>
+                <h1>🚀 TaskFlow API</h1>
+                <p>Welcome to TaskFlow - Your Personal Task Management System!</p>
+                <div class="links">
+                    <a href="/docs">📚 API Documentation</a>
+                    <a href="/api/health">❤️ Health Check</a>
+                </div>
+                <p style="margin-top: 30px; color: #666;">Frontend files not found. API is working!</p>
+            </body>
+        </html>
+        """)
+
+# ===== Health Check Endpoint =====
+@app.get("/api/health")
+def health_check():
+    """
+    API health check endpoint
+    """
     return {
         "message": "Welcome to TaskFlow API!",
         "status": "running",
